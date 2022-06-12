@@ -8,7 +8,7 @@
 
     <style>
         .loader {
-            display:none;
+            display: none;
             border: 16px solid #f3f3f3;
             border-radius: 50%;
             border-top: 16px solid #3498db;
@@ -51,7 +51,7 @@
     <button id="read">Read</button>
     <button id="resetdb">Reset DB</button>
 
-    <br/><br/><br/>
+    <br /><br /><br />
     <div id="loader" class="loader"></div>
 
     <div id="grid"></div>
@@ -63,17 +63,33 @@
     <script src="https://kendo.cdn.telerik.com/2022.2.510/js/kendo.all.min.js"></script>
 
     <script type="module">
+        $("#loader").show();
+        $(":button").attr("disabled", true);
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.8.3/firebase-app.js'
         import { getDatabase, ref, child, get, set } from "https://www.gstatic.com/firebasejs/9.8.3/firebase-database.js"
+        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/9.8.3/firebase-auth.js'
 
         // read config
         var config = JSON.parse(localStorage.getItem('config'));
-
-        // Initialize Firebase
         const app = initializeApp(config);
 
+        const auth = getAuth();
+        let dbRef;
+        signInAnonymously(auth)
+            .then(() => {
+                $("#loader").hide();
+                $(":button").removeAttr("disabled");
+                // Initialize Firebase
+                dbRef = ref(getDatabase());
+            })
+            .catch((error) => {
+                const errorCode = error.code;
+                const errorMessage = error.message;
+                // ...
+            });
+
+
         var data = null;
-        const dbRef = ref(getDatabase());
 
         $("#resetdb").click(() => {
             let confirmAction = confirm("Are you sure you want to reset levels log db?");
@@ -103,14 +119,19 @@
 
         function ReadLogs() {
             $("#loader").show();
+            $(":button").attr("disabled", true);
             get(child(dbRef, `Levels`)).then((snapshot) => {
                 $("#loader").hide();
+                $(":button").removeAttr("disabled");
                 if (snapshot.exists()) {
                     data = snapshot.val();
                     let dataArr = Object.keys(data).map((k) => { data[k].levelNumber = parseInt(k.substring(5)); return data[k]; });
 
                     $("#grid").kendoGrid({
                         sortable: true,
+                        filterable: {
+                            mode: "row"
+                        }, 
                         pageable: {
                             pageSize: 20
                         },
@@ -149,10 +170,6 @@
                             sort: { field: "levelNumber", dir: "asc" }
                         }
                     });
-
-                    console.log("read finished");
-                } else {
-                    console.log("No data available");
                 }
             }).catch((error) => {
                 console.error(error);
