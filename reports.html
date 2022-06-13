@@ -71,23 +71,24 @@
 
         // read config
         var config = JSON.parse(localStorage.getItem('config'));
-        const app = initializeApp(config);
+        if (config != null) {
+            const app = initializeApp(config);
 
-        const auth = getAuth();
-        let dbRef;
-        signInAnonymously(auth)
-            .then(() => {
-                $("#loader").hide();
-                $(":button").removeAttr("disabled");
-                // Initialize Firebase
-                dbRef = ref(getDatabase());
-            })
-            .catch((error) => {
-                const errorCode = error.code;
-                const errorMessage = error.message;
-                // ...
-            });
-
+            const auth = getAuth();
+            let dbRef;
+            signInAnonymously(auth)
+                .then(() => {
+                    $("#loader").hide();
+                    $(":button").removeAttr("disabled");
+                    // Initialize Firebase
+                    dbRef = ref(getDatabase());
+                })
+                .catch((error) => {
+                    const errorCode = error.code;
+                    const errorMessage = error.message;
+                    // ...
+                });
+        }
 
         var data = null;
 
@@ -131,7 +132,7 @@
                         sortable: true,
                         filterable: {
                             mode: "row"
-                        }, 
+                        },
                         pageable: {
                             pageSize: 20
                         },
