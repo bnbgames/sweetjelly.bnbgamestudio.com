@@ -169,7 +169,21 @@
                         ],
                         dataSource: {
                             data: dataArr,
-                            sort: { field: "levelNumber", dir: "asc" }
+                            sort: { field: "levelNumber", dir: "asc" },
+                            schema: {
+                                model: {
+                                    fields: {
+                                        levelNumber: { type: "number" },
+                                        Wins: { type: "number" },
+                                        Fails: { type: "number" },
+                                        FailsAttempt1: { type: "number" },
+                                        FailsAttempt2: { type: "number" },
+                                        FailsAttempt3: { type: "number" },
+                                        FailsAttempt4: { type: "number" }
+
+                                    }
+                                }
+                            },
                         }
                     });
                 }
