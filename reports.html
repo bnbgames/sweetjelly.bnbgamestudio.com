@@ -75,7 +75,7 @@
             const app = initializeApp(config);
 
             const auth = getAuth();
-            let dbRef;
+            var dbRef;
             signInAnonymously(auth)
                 .then(() => {
                     $("#loader").hide();
@@ -86,6 +86,7 @@
                 .catch((error) => {
                     const errorCode = error.code;
                     const errorMessage = error.message;
+                    console.log(error);
                     // ...
                 });
         }
