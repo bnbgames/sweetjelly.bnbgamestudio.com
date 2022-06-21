@@ -49,7 +49,8 @@
 
     <h1>Level Logs</h1>
 
-    <button id="read">Read</button>
+    <button id="readOld">Read Old</button>
+    <button id="readv57">Read v57</button>
     <button id="resetdb">Reset DB</button>
 
     <br /><br /><br />
@@ -116,14 +117,18 @@
         });
 
 
-        $("#read").click(() => {
-            ReadLogs();
+        $("#readOld").click(() => {
+            ReadLogs("");
         });
 
-        function ReadLogs() {
+        $("#readv57").click(() => {
+            ReadLogs("v57");
+        });
+
+        function ReadLogs(ver) {
             $("#loader").show();
             $(":button").attr("disabled", true);
-            get(child(dbRef, `Levels`)).then((snapshot) => {
+            get(child(dbRef, `${ver}/Levels`)).then((snapshot) => {
                 $("#loader").hide();
                 $(":button").removeAttr("disabled");
                 if (snapshot.exists()) {
