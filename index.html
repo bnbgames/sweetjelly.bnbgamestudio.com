@@ -3,35 +3,123 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sweet Jelly Match 3 Puzzle</title>
-    <link rel="icon" href="images/Icon.png">
-    <link href="https://fonts.googleapis.com/css?family=Noto+Sans|Pacifico" rel="stylesheet" type="text/css">
+    <title>Sweet Jelly Match 3 Puzzle — Free Puzzle Game for iOS &amp; Android</title>
+    <meta name="description"
+        content="Sweet Jelly Match 3 Puzzle is a free, colorful match-three game packed with sweet levels and tasty challenges. Available on the App Store and Google Play.">
+    <link rel="canonical" href="https://sweetjelly.bnbgamestudio.com/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Sweet Jelly Match 3 Puzzle">
+    <meta property="og:title" content="Sweet Jelly Match 3 Puzzle">
+    <meta property="og:description"
+        content="A free, colorful match-three puzzle game. Download on iOS and Android.">
+    <meta property="og:url" content="https://sweetjelly.bnbgamestudio.com/">
+    <meta property="og:image" content="https://sweetjelly.bnbgamestudio.com/images/logo.png">
+    <meta property="og:image:alt" content="Sweet Jelly Match 3 Puzzle logo">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Sweet Jelly Match 3 Puzzle">
+    <meta name="twitter:description"
+        content="A free, colorful match-three puzzle game. Download on iOS and Android.">
+    <meta name="twitter:image" content="https://sweetjelly.bnbgamestudio.com/images/logo.png">
+
+    <link rel="icon" type="image/png" href="images/Icon.png">
+    <link rel="apple-touch-icon" href="images/Icon.png">
+    <meta name="theme-color" content="#f06292">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&amp;family=Pacifico&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" type="text/css" href="style.css" />
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "MobileApplication",
+      "name": "Sweet Jelly Match 3 Puzzle",
+      "operatingSystem": ["iOS", "ANDROID"],
+      "applicationCategory": "GameApplication",
+      "genre": "Puzzle",
+      "url": "https://sweetjelly.bnbgamestudio.com/",
+      "image": "https://sweetjelly.bnbgamestudio.com/images/logo.png",
+      "publisher": {
+        "@type": "Organization",
+        "name": "BnBGameStudio",
+        "email": "support@bnbgamestudio.com"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "installUrl": [
+        "https://play.google.com/store/apps/details?id=com.match.puzzle.jelly.smash.candy",
+        "https://apps.apple.com/us/app/sweet-jelly-match-3-puzzle/id1619009351"
+      ]
+    }
+    </script>
 
 </head>
 
 <body>
     <div class="bgimg">
         <div class="middle">
-            <div class="logo">
-                <img src="images/logo.png" alt="">
+            <div class="logo" role="img" aria-label="Sweet Jelly Match 3 Puzzle logo">
+                <svg class="logo-svg" viewBox="0 0 600 360" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="sjPink" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#ff8fd0" />
+                            <stop offset="55%" stop-color="#ff4ea3" />
+                            <stop offset="100%" stop-color="#c41e7a" />
+                        </linearGradient>
+                        <linearGradient id="sjGold" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#fff1a8" />
+                            <stop offset="50%" stop-color="#ffc23d" />
+                            <stop offset="100%" stop-color="#ff7a1a" />
+                        </linearGradient>
+                        <linearGradient id="sjGloss" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="rgba(255,255,255,0.9)" />
+                            <stop offset="45%" stop-color="rgba(255,255,255,0.15)" />
+                            <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+                        </linearGradient>
+                        <filter id="sjShadow" x="-10%" y="-10%" width="120%" height="130%">
+                            <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#3d1052"
+                                flood-opacity="0.45" />
+                        </filter>
+                    </defs>
+
+                    <g filter="url(#sjShadow)" font-family="'Lilita One', 'Fredoka One', system-ui, sans-serif"
+                        text-anchor="middle" font-weight="400">
+                        <g transform="translate(300 130)">
+                            <text y="0" font-size="120" stroke="#3d1052" stroke-width="10"
+                                stroke-linejoin="round" paint-order="stroke" fill="url(#sjPink)">Sweet Jelly</text>
+                            <text y="-40" font-size="120" fill="url(#sjGloss)" aria-hidden="true">Sweet Jelly</text>
+                        </g>
+                        <g transform="translate(300 280) rotate(-3)">
+                            <text y="0" font-size="130" letter-spacing="2" stroke="#3d1052" stroke-width="11"
+                                stroke-linejoin="round" paint-order="stroke" fill="url(#sjGold)">MATCH 3</text>
+                            <text y="-44" font-size="130" letter-spacing="2" fill="url(#sjGloss)"
+                                aria-hidden="true">MATCH 3</text>
+                        </g>
+                    </g>
+                </svg>
             </div>
             <hr>
             <div class="links">
-                <a href="https://play.google.com/store/apps/details?id=com.match.puzzle.jelly.smash.candy"><img
-                        src="images/google.png" alt="PlayStore"></a>
-                </br>
-                <a href="https://apps.apple.com/us/app/sweet-jelly-match-3-puzzle/id1619009351"><img
-                        src="images/ios.png" alt="AppStore"></a>
+                <a href="https://play.google.com/store/apps/details?id=com.match.puzzle.jelly.smash.candy"
+                    aria-label="Download Sweet Jelly on Google Play"><img src="images/google.png"
+                        alt="Get it on Google Play"></a>
+                <br>
+                <a href="https://apps.apple.com/us/app/sweet-jelly-match-3-puzzle/id1619009351"
+                    aria-label="Download Sweet Jelly on the App Store"><img src="images/ios.png"
+                        alt="Download on the App Store"></a>
             </div>
         </div>
         <div class="footer">
             <a href="privacy.html">Privacy Policy</a>
             <p class="details">
-                © 2022 BnBGameStudio </br>
-                support@bnbgamestudio.com 
+                © 2022–2026 BnBGameStudio<br>
+                <a href="mailto:support@bnbgamestudio.com">support@bnbgamestudio.com</a>
             </p>
 
         </div>
