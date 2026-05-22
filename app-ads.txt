@@ -2607,6 +2607,7 @@ verve.com,5897,RESELLER,0c8f5958fc2d6270
 
 #Liftoff
 vungle.com,561e8d936b8d90f61a00139e,DIRECT,c107d686becd2d77
+vungle.com,6a10223da3ccf593079f3056,DIRECT,c107d686becd2d77
 contextweb.com,562852,RESELLER,89ff185a4c4e857c
 acexchange.co.kr,1317287336,RESELLER
 adform.com,3083,RESELLER
