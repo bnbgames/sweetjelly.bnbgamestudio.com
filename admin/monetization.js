@@ -388,6 +388,13 @@ function draw(D) {
   });
 
   // ---- ad units
+  const unitRows = (D.adUnits || []).map(r => ({
+    unit: r.labels.AD_UNIT, format: r.labels.FORMAT, platform: PLATFORM_NAME(r.labels.PLATFORM),
+    earnings: r.met.ESTIMATED_EARNINGS, impressions: r.met.IMPRESSIONS,
+    ecpm: r.met.IMPRESSIONS ? r.met.ESTIMATED_EARNINGS / r.met.IMPRESSIONS * 1000 : null,
+    fill: r.met.AD_REQUESTS ? r.met.MATCHED_REQUESTS / r.met.AD_REQUESTS : null,
+    show: r.met.MATCHED_REQUESTS ? r.met.IMPRESSIONS / r.met.MATCHED_REQUESTS : null,
+  }));
   table($('#unitTable'), {
     columns: [
       { key: 'unit', label: 'Ad unit' },
@@ -398,13 +405,7 @@ function draw(D) {
       { key: 'fill', label: 'Match rate', num: true, fmt: v => pct(v) },
       { key: 'show', label: 'Show rate', num: true, fmt: v => pct(v) },
     ],
-    rows: (D.adUnits || []).map(r => ({
-      unit: r.labels.AD_UNIT, format: r.labels.FORMAT, platform: PLATFORM_NAME(r.labels.PLATFORM),
-      earnings: r.met.ESTIMATED_EARNINGS,
-      ecpm: r.met.IMPRESSIONS ? r.met.ESTIMATED_EARNINGS / r.met.IMPRESSIONS * 1000 : null,
-      fill: r.met.AD_REQUESTS ? r.met.MATCHED_REQUESTS / r.met.AD_REQUESTS : null,
-      show: r.met.MATCHED_REQUESTS ? r.met.IMPRESSIONS / r.met.MATCHED_REQUESTS : null,
-    })),
+    rows: unitRows,
     sortKey: 'earnings',
     empty: D.errors.adUnits || 'No ad unit data',
   });
@@ -474,6 +475,30 @@ function draw(D) {
     empty: D.errors.gaCohorts || 'No cohort data',
   });
 
+  // Everything computed above, for the dashboard's export.
+  m.snapshot = {
+    period: { start: iso(D.start), end: iso(D.end), days: D.days },
+    currency: cur,
+    storeFee: fee,
+    apps: m.apps.filter(a => m.selectedApps.has(a.id)).map(a => `${a.name} (${PLATFORM_NAME(a.platform)})`),
+    kpis: {
+      revenueNet: adTotal + iapNet, adRevenue: adTotal, iapGross, iapNetEstimate: iapNet,
+      arpdau: dauSum ? (adTotal + iapNet) / dauSum : null, avgDau,
+      activeUsers: periodUsers, newUsers: sum(plat.map(r => r.m[1])), payers, firstTimePayers: firstPayers,
+      payerConversion: periodUsers ? payers / periodUsers : null, arppu: payers ? iapGross / payers : null,
+      adImpressions: adImps, ecpm: adImps ? adTotal / adImps * 1000 : null,
+    },
+    daily: dates.map(d => ({ date: d, adRevenue: adByDate[d], iapGross: iapByDate[d], dau: dauByDate[d] })),
+    formats,
+    platforms: Object.values(platRows),
+    mediation: med,
+    adUnits: unitRows,
+    products: prodRows,
+    countries: countryRows,
+    retention: cohRows.map(c => ({ cohort: c.cohort, users: c.size, ...Object.fromEntries([1, 2, 3, 4, 5].map(w => [`week${w}`, c.weeks[w] == null ? null : c.weeks[w] / (c.size || 1)])) })),
+    errors: D.errors,
+  };
+
   renderMoneyInsights({ D, fee, cur, adTotal, iapGross, iapNet, formats, platRows, med, medTotal, countryRows, cohRows, payers, periodUsers, adByDate, iapByDate, dates });
 }
 
@@ -525,4 +550,15 @@ function renderMoneyInsights(x) {
     out.push([w1 < 0.15 ? 'bad' : w1 < 0.25 ? 'warn' : 'good', `Week-1 retention averages ${pct(w1, 1)}. Revenue per user grows with every extra week a player stays, so early-level difficulty (see Levels) directly drives ad revenue.`]);
   }
   $('#moneyInsights').innerHTML = out.length ? out.map(([cls, t]) => `<li class="${cls}">${esc(t)}</li>`).join('') : '<li>No data for this period.</li>';
+}
+
+/** Aggregates from the last Monetization load (null if never connected). */
+export function getMonetizationSnapshot() {
+  if (!m.snapshot) return null;
+  return { ...m.snapshot, insights: [...document.querySelectorAll('#moneyInsights li')].map(li => li.textContent) };
+}
+
+/** Raw AdMob / GA4 rows from the last load. */
+export function getMonetizationRaw() {
+  return lastData;
 }

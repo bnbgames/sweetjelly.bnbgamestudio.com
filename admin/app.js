@@ -13,7 +13,9 @@ import {
 import {
   $, $$, DAY, fmt, fmt1, pct, esc, relTime, median, quantile, sum, charts, css, chart, alpha, solid, table, bar, kpi,
 } from './ui.js';
-import { GOOGLE_SCOPES, initMonetization, renderMonetization, resetMonetization } from './monetization.js';
+import {
+  GOOGLE_SCOPES, initMonetization, renderMonetization, resetMonetization, getMonetizationSnapshot, getMonetizationRaw,
+} from './monetization.js';
 const INACTIVE_DAYS = 7;
 const PAGE = 500;
 
@@ -641,28 +643,13 @@ $('#statsPath').addEventListener('change', async () => {
 
 // ---------------------------------------------------------------- render: collection
 
-function renderCollection(cm) {
-  const { season, all, withCol, collectors, eligible, stickerOwn, sets } = cm;
+// Numbers behind the Collection view; shared by the view and the export.
+function collectionDetails(cm, acqDays = 30) {
+  const { season, all, withCol, collectors, eligible, stickerOwn } = cm;
   const C = collectors.length || 1;
+  const now = Date.now();
 
-  const endTxt = Number.isFinite(season.end) ? new Date(season.end).toUTCString().replace(' GMT', ' UTC') : 'no end date';
-  const left = Number.isFinite(season.end) ? season.end - Date.now() : NaN;
-  $('#seasonBanner').innerHTML = `<b>${esc(ALBUM.name)}</b> · ${esc(season.phase)} · season ends ${esc(endTxt)}${left > 0 ? ` (${Math.ceil(left / DAY)} days left)` : ''}
-    · unlocks at level ${season.unlockLevel} · claim grace ${season.grace} days${Number.isFinite(season.next) && season.next > Date.now() ? ` · next season ${new Date(season.next).toISOString().slice(0, 10)}` : ''}`;
-
-  const owned = collectors.map(p => p.col.ownedCount);
-  $('#collectionKpis').innerHTML = [
-    kpi('Collectors', fmt(collectors.length), `${pct(collectors.length / (eligible.length || 1))} of ${fmt(eligible.length)} eligible`),
-    kpi('Avg stickers', fmt1(owned.length ? sum(owned) / owned.length : 0), `median ${fmt(median(owned))} of 48`),
-    kpi('Sets completed', fmt(sum(collectors.map(p => p.col.completeSets.length))), `${fmt(sum(sets.map(s => s.claimed)))} rewards claimed`),
-    kpi('Albums complete', fmt(collectors.filter(p => p.col.albumComplete).length), `${fmt(collectors.filter(p => p.col.albumClaimed).length)} claimed`),
-    kpi('Stardust held', fmt(sum(collectors.map(p => p.col.stardust))), `median ${fmt(median(collectors.map(p => p.col.stardust)))}`),
-    kpi('Gems held', fmt(sum(collectors.map(p => p.col.gems)))),
-    kpi('Unverified saves', '…', 'signature does not match the current key', 'sigKpi'),
-  ].join('');
-
-  // funnel
-  const steps = [
+  const funnel = [
     ['All players', all.length],
     [`Reached level ${season.unlockLevel}`, eligible.length],
     ['Has collection save', withCol.length],
@@ -671,10 +658,124 @@ function renderCollection(cm) {
     ['1+ set complete', collectors.filter(p => p.col.completeSets.length >= 1).length],
     ['4+ sets complete', collectors.filter(p => p.col.completeSets.length >= 4).length],
     ['Album complete', collectors.filter(p => p.col.albumComplete).length],
+  ].map(([step, players]) => ({ step, players, shareOfAll: players / (all.length || 1) }));
+
+  const ownedDist = new Array(STICKERS.length + 1).fill(0);
+  withCol.forEach(p => ownedDist[p.col.ownedCount]++);
+
+  const stickers = STICKERS.map(st => ({
+    id: st.id, set: SET_BY_ID[st.setId].name, name: st.name, rarity: RARITY[st.rarity], rarityIndex: st.rarity,
+    owners: stickerOwn[st.id], ownedShare: stickerOwn[st.id] / C,
+  }));
+
+  const w = PACKS.standard.weights;
+  const wSum = sum(w);
+  const rarity = RARITY.map((name, r) => {
+    const ids = STICKERS.filter(s => s.rarity === r).map(s => s.id);
+    return { r, name, count: ids.length, avgOwn: ids.length ? sum(ids.map(id => stickerOwn[id])) / ids.length / C : 0, odds: w[r] / wSum, dup: STARDUST.duplicateYield[r], cost: STARDUST.directBuyCost[r] };
+  });
+
+  // first-time sticker acquisitions per day, by rarity
+  const acqDates = [...Array(acqDays)].map((_, i) => new Date(now - (acqDays - 1 - i) * DAY).toISOString().slice(0, 10));
+  const acq = RARITY.map(() => new Array(acqDays).fill(0));
+  for (const p of collectors) {
+    for (const [id, t] of p.col.owned) {
+      const age = Math.floor((now - t * 1000) / DAY);
+      if (t && age >= 0 && age < acqDays) acq[STICKER_BY_ID[id].rarity][acqDays - 1 - age]++;
+    }
+  }
+
+  // stardust bands aligned to direct-buy prices
+  const cost = STARDUST.directBuyCost;
+  const sd = collectors.map(p => p.col.stardust);
+  const stardustBands = [[0, 0, '0'], [1, cost[0] - 1, `1–${cost[0] - 1}`], [cost[0], cost[1] - 1, `${cost[0]}–${cost[1] - 1}`], [cost[1], cost[2] - 1, `${cost[1]}–${cost[2] - 1}`], [cost[2], cost[3] - 1, `${cost[2]}–${cost[3] - 1}`], [cost[3], Infinity, `${cost[3]}+`]]
+    .map(([lo, hi, band]) => ({ band, collectors: sd.filter(v => v >= lo && v <= hi).length }));
+  const stardustWiped = collectors.filter(p => p.col.stardustWiped).length;
+
+  const packCounts = {}, packHolders = {};
+  for (const p of collectors) {
+    const seen = new Set();
+    for (const id of p.col.unopenedPacks) { packCounts[id] = (packCounts[id] || 0) + 1; seen.add(id); }
+    seen.forEach(id => { packHolders[id] = (packHolders[id] || 0) + 1; });
+  }
+  const packs = Object.keys({ ...PACKS, ...packCounts }).map(id => ({ id, name: PACKS[id]?.name || id, queued: packCounts[id] || 0, holders: packHolders[id] || 0 }));
+  const nearPity = collectors.filter(p => p.col.pity >= PACKS.standard.pity - 5).length;
+
+  const today = utcDayStamp();
+  const shopToday = {};
+  let buyersToday = 0, everBought = 0, adToday = 0, adEver = 0;
+  for (const p of collectors) {
+    if (p.col.coinPacksDayStamp) everBought++;
+    if (p.col.coinPacksDayStamp === today) {
+      buyersToday++;
+      for (const [id, n] of Object.entries(p.col.coinPacks)) shopToday[id] = (shopToday[id] || 0) + n;
+    }
+    if (p.col.adPackDayStamp) adEver++;
+    if (p.col.adPackDayStamp === today) adToday++;
+  }
+  const shop = [
+    ...Object.entries(shopToday).map(([id, n]) => ({ label: `${PACKS[id]?.name || id} bought with coins today`, value: n })),
+    { label: 'Players who bought a coin pack today', value: buyersToday },
+    { label: 'Free ad packs claimed today', value: adToday },
+    { label: 'Players who ever bought a coin pack', value: everBought },
+    { label: 'Players who ever claimed an ad pack', value: adEver },
   ];
+
+  const cos = {};
+  for (const p of collectors) {
+    for (const [slot, id] of Object.entries(p.col.equipped)) {
+      if (!id) continue;
+      const k = `${slot}|${id}`;
+      cos[k] = (cos[k] || 0) + 1;
+    }
+  }
+  const cosmetics = Object.entries(cos).map(([k, n]) => {
+    const [slot, id] = k.split('|');
+    return { id, name: COSMETIC_NAMES[id] || id, slot: slot.replace(/Id$/, ''), n };
+  });
+
+  const owned = collectors.map(p => p.col.ownedCount);
+  const kpis = {
+    collectors: collectors.length,
+    eligible: eligible.length,
+    avgStickers: owned.length ? sum(owned) / owned.length : 0,
+    medianStickers: median(owned),
+    setsCompleted: sum(collectors.map(p => p.col.completeSets.length)),
+    setRewardsClaimed: sum(cm.sets.map(s => s.claimed)),
+    albumsComplete: collectors.filter(p => p.col.albumComplete).length,
+    albumsClaimed: collectors.filter(p => p.col.albumClaimed).length,
+    stardustHeld: sum(sd),
+    medianStardust: median(sd),
+    gemsHeld: sum(collectors.map(p => p.col.gems)),
+  };
+
+  return { kpis, funnel, ownedDist, stickers, rarity, acqDates, acq, stardustBands, stardustWiped, packs, nearPity, shop, cosmetics };
+}
+
+function renderCollection(cm) {
+  const { season, all, collectors, eligible, stickerOwn, sets } = cm;
+  const d = collectionDetails(cm);
+  const C = collectors.length || 1;
+
+  const endTxt = Number.isFinite(season.end) ? new Date(season.end).toUTCString().replace(' GMT', ' UTC') : 'no end date';
+  const left = Number.isFinite(season.end) ? season.end - Date.now() : NaN;
+  $('#seasonBanner').innerHTML = `<b>${esc(ALBUM.name)}</b> · ${esc(season.phase)} · season ends ${esc(endTxt)}${left > 0 ? ` (${Math.ceil(left / DAY)} days left)` : ''}
+    · unlocks at level ${season.unlockLevel} · claim grace ${season.grace} days${Number.isFinite(season.next) && season.next > Date.now() ? ` · next season ${new Date(season.next).toISOString().slice(0, 10)}` : ''}`;
+
+  const k = d.kpis;
+  $('#collectionKpis').innerHTML = [
+    kpi('Collectors', fmt(k.collectors), `${pct(k.collectors / (eligible.length || 1))} of ${fmt(eligible.length)} eligible`),
+    kpi('Avg stickers', fmt1(k.avgStickers), `median ${fmt(k.medianStickers)} of 48`),
+    kpi('Sets completed', fmt(k.setsCompleted), `${fmt(k.setRewardsClaimed)} rewards claimed`),
+    kpi('Albums complete', fmt(k.albumsComplete), `${fmt(k.albumsClaimed)} claimed`),
+    kpi('Stardust held', fmt(k.stardustHeld), `median ${fmt(k.medianStardust)}`),
+    kpi('Gems held', fmt(k.gemsHeld)),
+    kpi('Unverified saves', '…', 'signature does not match the current key', 'sigKpi'),
+  ].join('');
+
   chart('chFunnel', {
     type: 'bar',
-    data: { labels: steps.map(s => s[0]), datasets: [{ data: steps.map(s => s[1]), backgroundColor: solid(css('--accent'), 0.7), borderRadius: 4 }] },
+    data: { labels: d.funnel.map(s => s.step), datasets: [{ data: d.funnel.map(s => s.players), backgroundColor: solid(css('--accent'), 0.7), borderRadius: 4 }] },
     options: {
       indexAxis: 'y',
       interaction: { mode: 'nearest', intersect: true },
@@ -683,16 +784,12 @@ function renderCollection(cm) {
     },
   });
 
-  // owned distribution
-  const dist = new Array(STICKERS.length + 1).fill(0);
-  withCol.forEach(p => dist[p.col.ownedCount]++);
   chart('chOwnedDist', {
     type: 'bar',
-    data: { labels: dist.map((_, i) => i), datasets: [{ data: dist, backgroundColor: solid(css('--accent'), 0.6), borderRadius: 2 }] },
+    data: { labels: d.ownedDist.map((_, i) => i), datasets: [{ data: d.ownedDist, backgroundColor: solid(css('--accent'), 0.6), borderRadius: 2 }] },
     options: { scales: { y: { beginAtZero: true, title: { display: true, text: 'players' } }, x: { title: { display: true, text: 'stickers owned' } } } },
   });
 
-  // heatmap
   const rarColor = r => css(`--r${r}`);
   $('#heatmap').innerHTML = `<div class="heatmap">${SETS.map(s => {
     const setStat = sets[s.index];
@@ -718,8 +815,6 @@ function renderCollection(cm) {
     sortDir: 'asc',
   });
 
-  const w = PACKS.standard.weights;
-  const wSum = sum(w);
   table($('#rarityTable'), {
     columns: [
       { key: 'name', label: 'Rarity', html: r => `<span class="r${r.r}">&#9679;</span> ${r.name}` },
@@ -729,107 +824,50 @@ function renderCollection(cm) {
       { key: 'dup', label: 'Dup → stardust', num: true },
       { key: 'cost', label: 'Buy cost', num: true, fmt },
     ],
-    rows: RARITY.map((name, r) => {
-      const ids = STICKERS.filter(s => s.rarity === r).map(s => s.id);
-      return { r, name, count: ids.length, avgOwn: ids.length ? sum(ids.map(id => stickerOwn[id])) / ids.length / C : 0, odds: w[r] / wSum, dup: STARDUST.duplicateYield[r], cost: STARDUST.directBuyCost[r] };
-    }),
+    rows: d.rarity,
     sortKey: 'r',
     sortDir: 'asc',
   });
 
-  // acquisitions per day, stacked by rarity
-  const now = Date.now();
-  const dayKeys = [...Array(30)].map((_, i) => 29 - i);
-  const acq = RARITY.map(() => new Array(30).fill(0));
-  for (const p of collectors) {
-    for (const [id, t] of p.col.owned) {
-      const age = Math.floor((now - t * 1000) / DAY);
-      if (t && age >= 0 && age < 30) acq[STICKER_BY_ID[id].rarity][29 - age]++;
-    }
-  }
   chart('chAcq', {
     type: 'bar',
     data: {
-      labels: dayKeys.map(d => new Date(now - d * DAY).toISOString().slice(5, 10)),
-      datasets: RARITY.map((name, r) => ({ label: name, data: acq[r], backgroundColor: solid(rarColor(r), 0.8), stack: 'a' })),
+      labels: d.acqDates.map(s => s.slice(5)),
+      datasets: RARITY.map((name, r) => ({ label: name, data: d.acq[r], backgroundColor: solid(rarColor(r), 0.8), stack: 'a' })),
     },
     options: { plugins: { legend: { display: true, position: 'bottom' } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } },
   });
 
-  // stardust buckets aligned to direct-buy prices
   const cost = STARDUST.directBuyCost;
-  const bands = [[0, 0, '0'], [1, cost[0] - 1, `1–${cost[0] - 1}`], [cost[0], cost[1] - 1, `${cost[0]}–${cost[1] - 1}`], [cost[1], cost[2] - 1, `${cost[1]}–${cost[2] - 1}`], [cost[2], cost[3] - 1, `${cost[2]}–${cost[3] - 1}`], [cost[3], Infinity, `${cost[3]}+`]];
-  const sd = collectors.map(p => p.col.stardust);
   chart('chStardust', {
     type: 'bar',
-    data: { labels: bands.map(b => b[2]), datasets: [{ data: bands.map(([lo, hi]) => sd.filter(v => v >= lo && v <= hi).length), backgroundColor: solid(css('--r2'), 0.6), borderRadius: 4 }] },
+    data: { labels: d.stardustBands.map(b => b.band), datasets: [{ data: d.stardustBands.map(b => b.collectors), backgroundColor: solid(css('--r2'), 0.6), borderRadius: 4 }] },
     options: { scales: { y: { beginAtZero: true, title: { display: true, text: 'collectors' } }, x: { title: { display: true, text: 'stardust' } } } },
   });
-  const wiped = collectors.filter(p => p.col.stardustWiped).length;
   $('#stardustNote').textContent = `Bands match the direct-buy prices (Common ${cost[0]}, Rare ${cost[1]}, Epic ${cost[2]}, Legendary ${cost[3]}).`
-    + (wiped ? ` ${fmt(wiped)} players already had their stardust wiped by the season end.` : '');
+    + (d.stardustWiped ? ` ${fmt(d.stardustWiped)} players already had their stardust wiped by the season end.` : '');
 
-  // unopened packs
-  const packCounts = {};
-  const packHolders = {};
-  for (const p of collectors) {
-    const seen = new Set();
-    for (const id of p.col.unopenedPacks) { packCounts[id] = (packCounts[id] || 0) + 1; seen.add(id); }
-    seen.forEach(id => { packHolders[id] = (packHolders[id] || 0) + 1; });
-  }
-  const nearPity = collectors.filter(p => p.col.pity >= PACKS.standard.pity - 5).length;
   table($('#packTable'), {
     columns: [
       { key: 'name', label: 'Pack' },
       { key: 'queued', label: 'Queued', num: true, fmt },
       { key: 'holders', label: 'Players', num: true, fmt },
     ],
-    rows: Object.keys({ ...PACKS, ...packCounts }).map(id => ({ id, name: PACKS[id]?.name || id, queued: packCounts[id] || 0, holders: packHolders[id] || 0 })),
+    rows: d.packs,
     sortKey: 'queued',
     empty: 'No queued packs',
   });
-  $('#pityNote').textContent = `${fmt(nearPity)} players are within 5 packs of the Legendary pity (${PACKS.standard.pity}).`;
+  $('#pityNote').textContent = `${fmt(d.nearPity)} players are within 5 packs of the Legendary pity (${PACKS.standard.pity}).`;
 
-  // shop today
-  const today = utcDayStamp();
-  const shop = {};
-  let buyersToday = 0, everBought = 0, adToday = 0, adEver = 0;
-  for (const p of collectors) {
-    if (p.col.coinPacksDayStamp) everBought++;
-    if (p.col.coinPacksDayStamp === today) {
-      buyersToday++;
-      for (const [id, n] of Object.entries(p.col.coinPacks)) shop[id] = (shop[id] || 0) + n;
-    }
-    if (p.col.adPackDayStamp) adEver++;
-    if (p.col.adPackDayStamp === today) adToday++;
-  }
   table($('#shopTable'), {
     columns: [{ key: 'label', label: 'Item' }, { key: 'value', label: 'Count', num: true, fmt }],
-    rows: [
-      ...Object.entries(shop).map(([id, n]) => ({ label: `${PACKS[id]?.name || id} bought with coins`, value: n })),
-      { label: 'Players who bought a coin pack', value: buyersToday },
-      { label: 'Free ad packs claimed', value: adToday },
-      { label: 'Players who ever bought a coin pack', value: everBought },
-      { label: 'Players who ever claimed an ad pack', value: adEver },
-    ],
+    rows: d.shop,
     sortKey: 'none',
   });
 
-  // cosmetics
-  const cos = {};
-  for (const p of collectors) {
-    for (const [slot, id] of Object.entries(p.col.equipped)) {
-      if (!id) continue;
-      const k = `${slot}|${id}`;
-      cos[k] = (cos[k] || 0) + 1;
-    }
-  }
   table($('#cosmeticTable'), {
     columns: [{ key: 'name', label: 'Cosmetic' }, { key: 'slot', label: 'Slot' }, { key: 'n', label: 'Equipped', num: true, fmt }],
-    rows: Object.entries(cos).map(([k, n]) => {
-      const [slot, id] = k.split('|');
-      return { name: COSMETIC_NAMES[id] || id, slot: slot.replace(/Id$/, ''), n };
-    }),
+    rows: d.cosmetics,
     sortKey: 'n',
     empty: 'Nothing equipped yet',
   });
@@ -928,21 +966,26 @@ const BOARDS = [
   { key: 'total_stars', title: 'Total stars' },
   { key: 'best_score', title: 'Best single-level score' },
 ];
-let boardsLoadedAt = 0;
+const boardCache = {}; // key -> { rows, count, at }
+
+async function fetchBoard(key) {
+  const hit = boardCache[key];
+  if (hit && Date.now() - hit.at < 60000) return hit;
+  const col = collection(db, 'leaderboards', key, 'scores');
+  const [snap, count] = await Promise.all([
+    getDocs(query(col, orderBy('score', 'desc'), limit(50))),
+    getCountFromServer(col).then(r => r.data().count).catch(() => null),
+  ]);
+  return (boardCache[key] = { rows: snap.docs.map((d, i) => ({ rank: i + 1, uid: d.id, ...d.data() })), count, at: Date.now() });
+}
 
 async function renderLeaderboards() {
-  if (Date.now() - boardsLoadedAt < 60000) return;
-  boardsLoadedAt = Date.now();
   const wrap = $('#boards');
   wrap.innerHTML = BOARDS.map(b => `<div class="card" id="board-${b.key}"><div class="card-head"><h3>${b.title}</h3><span class="hint"></span></div><div class="loading"><span class="spinner"></span>Loading…</div></div>`).join('');
   await Promise.all(BOARDS.map(async b => {
     const card = $(`#board-${b.key}`);
     try {
-      const col = collection(db, 'leaderboards', b.key, 'scores');
-      const [snap, count] = await Promise.all([
-        getDocs(query(col, orderBy('score', 'desc'), limit(50))),
-        getCountFromServer(col).then(r => r.data().count).catch(() => null),
-      ]);
+      const { rows, count } = await fetchBoard(b.key);
       $('.hint', card).textContent = count != null ? `${fmt(count)} entries` : '';
       const holder = document.createElement('div');
       holder.className = 'table-wrap';
@@ -954,7 +997,7 @@ async function renderLeaderboards() {
           { key: 'score', label: 'Score', num: true, fmt },
           { key: 'ts', label: 'Updated', num: true, fmt: v => relTime(v) },
         ],
-        rows: snap.docs.map((d, i) => ({ rank: i + 1, uid: d.id, ...d.data() })),
+        rows,
         sortKey: 'rank',
         sortDir: 'asc',
         onRow: r => { const p = state.byUid.get(r.uid); if (p) openPlayer(p); },
@@ -964,6 +1007,184 @@ async function renderLeaderboards() {
     }
   }));
 }
+
+// ---------------------------------------------------------------- export
+
+const csvCell = v => {
+  if (v == null || (typeof v === 'number' && !Number.isFinite(v))) return '';
+  if (typeof v === 'number') return Number.isInteger(v) ? String(v) : String(Number(v.toFixed(4)));
+  const s = String(v);
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+// cols: 'key' or [key | row => value, header]
+function csv(rows, cols) {
+  const cs = cols.map(c => (Array.isArray(c) ? c : [c, c]));
+  return [cs.map(c => c[1]).join(','), ...rows.map(r => cs.map(([k]) => csvCell(typeof k === 'function' ? k(r) : r[k])).join(','))].join('\n');
+}
+const section = (title, body, note = '') => `### ${title}\n${note ? `${note}\n` : ''}\n\`\`\`csv\n${body}\n\`\`\`\n`;
+const kvLines = obj => Object.entries(obj).map(([k, v]) => `- ${k}: ${typeof v === 'number' ? csvCell(v) : v ?? '–'}`).join('\n');
+const listText = sel => [...document.querySelectorAll(`${sel} li`)].map(li => `- ${li.textContent}`).join('\n') || '- (none)';
+
+async function buildReport() {
+  const lv = levelMetrics();
+  const cm = collectionMetrics();
+  const cd = collectionDetails(cm, 60);
+  const season = cm.season;
+  const P = state.players;
+  const now = Date.now();
+  const active = d => P.filter(p => now - p.savedAt <= d * DAY).length;
+  const beaten = P.map(p => p.beaten);
+  const totalWins = sum(lv.map(r => r.wins));
+  const totalFails = sum(lv.map(r => r.fails));
+  const out = [];
+
+  out.push(`# Sweet Jelly Match 3 — admin data export`, '',
+    kvLines({
+      generated: new Date().toISOString(),
+      firebaseProject: app.options.projectId,
+      levelStatsPath: $('#statsPath').value || '(root)',
+      playersWithCloudSave: P.length,
+    }), '',
+    '## How to read this', '',
+    '- Players = Firestore cloud saves (one per Firebase account). "Last save" is the last time progress was uploaded (after a win or a collection change), not the last session.',
+    '- levelsBeaten = reachedLevel − 1. "stoppedHere" = players whose next unbeaten level is this one; "quitHere" = those with no save for 7+ days.',
+    '- Level wins count every win including replays; fails count only when the player gives up on the fail popup. failAttemptN = Nth fail since the game scene loaded (4 = 4th or later).',
+    '- Collection: 1 album "Sweet Origins", 8 sets × 6 stickers (24 Common, 16 Rare, 6 Epic, 2 Legendary). Duplicates convert straight to stardust. Standard pack odds 70/23/6/1.',
+    '- Monetization: ad earnings = AdMob estimates (USD). IAP = Google Analytics in_app_purchase revenue, gross (before store fee).',
+    '');
+
+  out.push('## Overview', '', kvLines({
+    players: P.length,
+    active24h: active(1), active7d: active(7), active30d: active(30),
+    medianLevelsBeaten: median(beaten), p90LevelsBeaten: quantile(beaten, 0.9), maxLevelsBeaten: Math.max(0, ...beaten),
+    collectors: cm.collectors.length, collectionEligible: cm.eligible.length,
+    levelWinsTotal: totalWins, levelFailsTotal: totalFails, overallWinRate: totalWins / ((totalWins + totalFails) || 1),
+  }), '', '### Dashboard insights', listText('#insights'), '');
+
+  const lastSave = [...Array(60)].map((_, i) => {
+    const age = 59 - i;
+    return { date: new Date(now - age * DAY).toISOString().slice(0, 10), players: P.filter(p => Math.floor((now - p.savedAt) / DAY) === age).length };
+  });
+  out.push(section('Players by day of last cloud save (last 60 days)', csv(lastSave, ['date', 'players'])));
+
+  out.push('## Levels', '');
+  const levelRows = lv.filter(r => r.plays || r.reached);
+  out.push(section(`Per-level stats (${levelRows.length} levels with data)`, csv(levelRows, [
+    'level', 'plays', 'wins', 'fails', ['winRate', 'winRate'], ['f1', 'failAttempt1'], ['f2', 'failAttempt2'], ['f3', 'failAttempt3'], ['f4', 'failAttempt4plus'],
+    ['beat', 'playersBeat'], ['reached', 'playersReached'], ['stopped', 'stoppedHere'], ['stoppedInactive', 'quitHere'], ['quitRate', 'quitShareOfReached'], ['avgStars', 'avgStars'],
+  ])));
+
+  out.push('## Collection', '', kvLines({
+    album: ALBUM.name, phase: season.phase,
+    seasonEnd: Number.isFinite(season.end) ? new Date(season.end).toISOString() : 'none',
+    unlockLevel: season.unlockLevel, claimGraceDays: season.grace,
+    seasonConfigDoc: JSON.stringify(state.season || {}),
+  }), '', kvLines(cd.kpis), '',
+  `- unverifiedSignatures: ${[...state.signatures.values()].filter(v => v === 'unverified').length} (saves whose checksum does not match the current key; older builds signed with a device key)`,
+  `- playersNearLegendaryPity (>= ${PACKS.standard.pity - 5}/${PACKS.standard.pity}): ${cd.nearPity}`,
+  `- playersWithStardustWiped: ${cd.stardustWiped}`, '');
+  out.push(section('Funnel', csv(cd.funnel, ['step', 'players', 'shareOfAll'])));
+  out.push(section('Sticker ownership (share of collectors)', csv(cd.stickers, ['set', 'name', 'rarity', 'owners', 'ownedShare', 'id'])));
+  out.push(section('Sets', csv(cm.sets, ['name', 'avgOwned', 'complete', 'completeRate', 'claimed', ['unclaimed', 'completeButUnclaimed']])));
+  out.push(section('Rarity vs standard pack odds', csv(cd.rarity, ['name', 'count', ['avgOwn', 'avgOwnedShare'], ['odds', 'standardPackOdds'], ['dup', 'duplicateStardust'], ['cost', 'directBuyCost']])));
+  out.push(section('Stickers owned per player (players with a collection save)', csv(cd.ownedDist.map((n, i) => ({ stickers: i, players: n })), ['stickers', 'players'])));
+  out.push(section('Stardust balances', csv(cd.stardustBands, ['band', 'collectors'])));
+  out.push(section('New stickers per day by rarity (last 60 days)', csv(cd.acqDates.map((date, i) => ({ date, ...Object.fromEntries(RARITY.map((n, r) => [n, cd.acq[r][i]])) })), ['date', ...RARITY])));
+  out.push(section('Unopened packs', csv(cd.packs, ['name', 'queued', ['holders', 'players']])));
+  out.push(section('Shop activity (UTC day)', csv(cd.shop, ['label', 'value'])));
+  out.push(section('Equipped cosmetics', csv(cd.cosmetics, ['name', 'slot', ['n', 'players']])));
+
+  out.push('## Players', '');
+  const top = [...P].sort((a, b) => b.beaten - a.beaten || b.totalStars - a.totalStars).slice(0, 200);
+  out.push(section('Top 200 players by level', csv(top, [
+    [p => displayName(p), 'name'], ['uid', 'uid'], ['beaten', 'levelsBeaten'], ['totalStars', 'totalStars'],
+    [p => p.col?.ownedCount ?? '', 'stickers'], [p => p.col?.completeSets.length ?? '', 'setsComplete'], [p => p.col?.stardust ?? '', 'stardust'],
+    [p => p.col?.gems ?? '', 'gems'], [p => (p.col ? p.col.unopenedPacks.length : ''), 'queuedPacks'], [p => new Date(p.savedAt).toISOString(), 'lastSave'],
+  ])));
+
+  out.push('## Leaderboards', '');
+  for (const b of BOARDS) {
+    try {
+      const { rows, count } = await fetchBoard(b.key);
+      out.push(section(`${b.title} (top 50 of ${count ?? '?'})`, csv(rows, ['rank', 'name', 'score', [r => new Date(r.ts).toISOString(), 'updated']])));
+    } catch (e) { out.push(`### ${b.title}\n(error: ${e.message})\n`); }
+  }
+
+  out.push('## Monetization', '');
+  const mon = getMonetizationSnapshot();
+  if (!mon) {
+    out.push('(Not loaded. Open the Monetization tab and connect Google data, then export again.)', '');
+  } else {
+    out.push(kvLines({ period: `${mon.period.start} to ${mon.period.end} (${mon.period.days} days)`, currency: mon.currency, storeFeeAssumed: mon.storeFee, apps: mon.apps.join('; ') }), '',
+      kvLines(mon.kpis), '', '### Dashboard insights', mon.insights.map(t => `- ${t}`).join('\n') || '- (none)', '');
+    if (Object.keys(mon.errors || {}).length) out.push(`Load errors: ${JSON.stringify(mon.errors)}`, '');
+    out.push(section('Daily revenue and DAU', csv(mon.daily, ['date', 'adRevenue', 'iapGross', 'dau'])));
+    out.push(section('Ad formats', csv(mon.formats, ['format', 'earnings', ['imps', 'impressions'], ['req', 'requests'], ['matched', 'matchedRequests'], 'clicks', 'ecpm', ['perDau', 'impressionsPerDau'], ['fill', 'matchRate'], ['show', 'showRate']])));
+    out.push(section('Platforms', csv(mon.platforms, ['platform', 'users', ['adEarn', 'adEarnings'], ['imps', 'impressions'], ['iap', 'iapGross'], 'payers', ['dauSum', 'dauDays']])));
+    out.push(section('Mediation by ad source', csv(mon.mediation, ['source', 'format', 'earnings', ['imps', 'impressions'], ['req', 'requests'], ['matched', 'matchedRequests'], 'ecpm', 'fill'])));
+    out.push(section('Ad units', csv(mon.adUnits, ['unit', 'format', 'platform', 'earnings', 'impressions', 'ecpm', ['fill', 'matchRate'], ['show', 'showRate']])));
+    out.push(section('In-app purchases', csv(mon.products, ['product', ['count', 'purchases'], ['revenue', 'grossRevenue']])));
+    out.push(section('Countries', csv(mon.countries, ['country', 'code', 'users', ['adEarn', 'adEarnings'], ['imps', 'impressions'], 'ecpm', ['iap', 'iapGross'], 'payers', ['total', 'revenueNet'], ['arpu', 'revenuePerUser']])));
+    out.push(section('Weekly retention by first-open week', csv(mon.retention, ['cohort', 'users', 'week1', 'week2', 'week3', 'week4', 'week5'])));
+  }
+  return out.join('\n');
+}
+
+function buildRaw() {
+  return {
+    generated: new Date().toISOString(),
+    firebaseProject: app.options.projectId,
+    levelStatsPath: $('#statsPath').value || '(root)',
+    levelStats: state.levelStats,
+    seasonConfig: state.season,
+    leaderboards: Object.fromEntries(Object.entries(boardCache).map(([k, v]) => [k, v.rows])),
+    players: state.players.map(p => ({
+      uid: p.uid,
+      nickname: p.nickname,
+      reachedLevel: p.reachedLevel,
+      totalStars: p.totalStars,
+      lastSave: new Date(p.savedAt).toISOString(),
+      openLevel: p.openLevel,
+      starsPerLevel: p.stars,
+      scoresPerLevel: p.scores,
+      signature: state.signatures.get(p.uid) || null,
+      collection: p.col ? {
+        ...p.col,
+        owned: Object.fromEntries([...p.col.owned].map(([id, t]) => [id, t ? new Date(t * 1000).toISOString() : null])),
+      } : null,
+    })),
+    monetization: { summary: getMonetizationSnapshot(), raw: getMonetizationRaw() },
+  };
+}
+
+function download(name, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function runExport(kind) {
+  const btn = kind === 'raw' ? $('#exportRaw') : $('#exportReport');
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Exporting…';
+  try {
+    await checkSignatures();
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+    if (kind === 'raw') download(`sweetjelly-raw-${stamp}.json`, JSON.stringify(buildRaw(), null, 1), 'application/json');
+    else download(`sweetjelly-report-${stamp}.md`, await buildReport(), 'text/markdown');
+  } catch (e) {
+    showBanner(`Export failed: ${e.message}`, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+}
+$('#exportReport').addEventListener('click', () => runExport('report'));
+$('#exportRaw').addEventListener('click', () => runExport('raw'));
 
 // ---------------------------------------------------------------- go
 
