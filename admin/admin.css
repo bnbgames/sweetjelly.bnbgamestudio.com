@@ -133,6 +133,7 @@ main { padding: 22px 28px 60px; min-width: 0; }
 
 .view { display: none; flex-direction: column; gap: 18px; }
 .view.active { display: flex; }
+.stack { display: flex; flex-direction: column; gap: 18px; }
 
 .grid { display: grid; gap: 14px; }
 .kpis { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }

@@ -45,6 +45,7 @@
             <div class="brand"><img src="images/Icon.png" alt=""><div><b>Sweet Jelly</b><span>Admin</span></div></div>
             <nav class="nav" id="nav">
                 <button data-view="overview" class="active">Overview</button>
+                <button data-view="money">Monetization</button>
                 <button data-view="levels">Levels</button>
                 <button data-view="collection">Collection</button>
                 <button data-view="players">Players</button>
@@ -87,6 +88,90 @@
                         <div class="card-head"><h3>Top players</h3><span class="hint">by level reached</span></div>
                         <div class="table-wrap" id="topPlayers"></div>
                     </div>
+                </div>
+            </section>
+
+            <!-- Monetization -->
+            <section class="view" data-view="money">
+                <div class="card" id="moneyConnectCard">
+                    <div class="card-head"><h3>Connect AdMob and Google Analytics</h3></div>
+                    <p class="muted">Revenue data comes from the AdMob and Google Analytics APIs with read-only access for
+                        the signed-in Google account. The connection lasts about an hour per browser tab.</p>
+                    <div id="moneyConnectError" class="error"></div>
+                    <button id="moneyConnect" class="btn primary">Connect Google data</button>
+                </div>
+                <div id="moneyBody" class="stack hidden">
+                    <div id="moneyBanner" class="banner bad hidden"></div>
+                    <div class="card">
+                        <div class="toolbar">
+                            <label>Period
+                                <select id="moneyDays">
+                                    <option value="7">Last 7 days</option>
+                                    <option value="28" selected>Last 28 days</option>
+                                    <option value="90">Last 90 days</option>
+                                </select>
+                            </label>
+                            <label>Analytics property <select id="moneyProp"></select></label>
+                            <label title="Apple/Google fee applied to IAP for net estimates">Store fee % <input type="number" id="moneyFee" min="0" max="50" value="15"></label>
+                            <button id="moneyReload" class="btn">Reload</button>
+                            <span class="sync" id="moneyStatus"></span>
+                        </div>
+                        <div class="toolbar small" id="moneyApps" style="margin:0"></div>
+                    </div>
+                    <div class="grid kpis" id="moneyKpis"></div>
+                    <div class="card">
+                        <div class="card-head"><h3>Revenue per day</h3><span class="hint">ads (AdMob) + IAP net estimate (Analytics), with ARPDAU</span></div>
+                        <div class="chart tall"><canvas id="chRevenue"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>What to improve</h3></div>
+                        <ul class="insights" id="moneyInsights"></ul>
+                    </div>
+                    <div class="grid cols-2">
+                        <div class="card">
+                            <div class="card-head"><h3>Ad formats</h3><span class="hint">show rate = shown &divide; filled</span></div>
+                            <div id="formatErr"></div>
+                            <div class="table-wrap" id="formatTable"></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Platforms</h3></div>
+                            <div class="table-wrap" id="platformTable"></div>
+                        </div>
+                    </div>
+                    <div class="grid cols-2">
+                        <div class="card">
+                            <div class="card-head"><h3>Mediation: earnings by ad source</h3></div>
+                            <div class="chart"><canvas id="chMediation"></canvas></div>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Ad units</h3></div>
+                            <div class="table-wrap" id="unitTable"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Mediation: ad sources</h3><span class="hint">fill = matched &divide; requests sent to that source</span></div>
+                        <div id="mediationErr"></div>
+                        <div class="table-wrap" id="mediationTable"></div>
+                    </div>
+                    <div class="grid cols-2">
+                        <div class="card">
+                            <div class="card-head"><h3>In-app purchases</h3><span class="hint">gross, from Analytics in_app_purchase</span></div>
+                            <div class="table-wrap" id="productTable"></div>
+                            <p class="note" id="productNote"></p>
+                        </div>
+                        <div class="card">
+                            <div class="card-head"><h3>Weekly retention</h3><span class="hint">share of each first-open week still active</span></div>
+                            <div class="table-wrap" id="retentionTable"></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Countries</h3></div>
+                        <div class="table-wrap" id="countryTable"></div>
+                    </div>
+                    <p class="muted small">
+                        Ad earnings are AdMob estimates in USD. IAP revenue is gross as reported by Google Analytics
+                        (before the store fee, refunds may lag); exact payouts are in App Store Connect and Play Console.
+                    </p>
                 </div>
             </section>
 
