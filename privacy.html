@@ -17,14 +17,15 @@
 <body>
 
 <h1>Privacy Policy</h1>
-<p class="updated">Last updated: 2026-05-22</p>
+<p class="updated">Last updated: 2026-09-28</p>
 
 <p>
   B&amp;B Game Studio ("we", "our", "us") built the
-  <strong>Sweet Jelly Match 3 Puzzle</strong> game as an ad-supported game.
-  This Service is provided at no cost and is intended for use as is. This
-  policy explains what information we collect, how it is used, and what
-  choices you have.
+  <strong>Sweet Jelly Match 3 Puzzle</strong> game for iOS and Android as a
+  free, ad-supported game with optional in-app purchases. This policy
+  explains what information we collect, how it is used, and what choices
+  you have. It applies to both the iOS (App Store) and Android (Google
+  Play) versions of the game unless a section says otherwise.
 </p>
 
 <p>
@@ -36,47 +37,102 @@
 <h2>Information Collection and Use</h2>
 
 <p>
-  The game stores most player data (game progression, in-game currency,
-  preferences) <strong>locally on your device</strong>. We do not transmit
-  this information to our own servers.
+  The game stores your game data (progression, in-game currency,
+  preferences) <strong>locally on your device</strong>. When you are online,
+  the game also backs up your progress to a cloud database hosted for us by
+  Google Firebase, so that it can be restored if you reinstall the game or
+  change device (see <a href="#accounts">Game Account, Cloud Save and
+  Leaderboards</a> below). We do not ask for your name, email address, or
+  phone number.
 </p>
 <p>
   The game also integrates with third-party services that may collect
   information used to identify you or your device for the purposes of
-  showing ads, tracking analytics, providing cloud-saved progression, and
-  enabling leaderboards and achievements. Those services are listed below.
+  showing ads, measuring analytics, processing purchases, sending
+  notifications, and providing sign-in, leaderboards, and achievements.
+  Those services are listed below.
 </p>
 
-<h2>Google Account and Cloud-Saved Games</h2>
+<h2 id="accounts">Game Account, Cloud Save and Leaderboards</h2>
 
+<h3>Anonymous game account</h3>
 <p>
-  If you choose to sign in with your Google account, the game uses
-  <strong>Google Play Games Services</strong> to provide leaderboards,
-  achievements, and cross-device cloud-saved progression. When you sign
-  in, the game accesses:
+  On first launch the game creates an <strong>anonymous game account</strong>
+  using Firebase Authentication. This account is identified only by a
+  random ID; it is not linked to your name or email. It is used to keep
+  your cloud save and leaderboard entries together.
+</p>
+
+<h3>Optional sign-in with Google Play Games (Android) or Game Center (iOS)</h3>
+<p>
+  The game offers sign-in with the game service of your platform:
 </p>
 <ul>
   <li>
-    Your <strong>Google Play Games player ID and display name</strong> &mdash;
-    used to identify your entries on leaderboards and to display your
-    name in achievement notifications.
+    <strong>Android &mdash; Google Play Games Services.</strong> If you sign
+    in, the game accesses your Google Play Games player ID and display name,
+    and uses Google Play Games for achievements.
   </li>
   <li>
-    The <strong>Google Drive App Data folder</strong>
-    (<code>drive.appdata</code> scope) &mdash; used exclusively to store your
-    game progression (highest level reached, stars earned, scores) in a
-    private folder on <em>your</em> Google Drive that is only accessible
-    by this app. We do not read or write any other part of your Google
-    Drive. We cannot see your other files, photos, or documents.
+    <strong>iOS &mdash; Apple Game Center.</strong> If you are signed in to
+    Game Center, the game receives your Game Center player ID and a
+    verification credential from Apple.
   </li>
 </ul>
 <p>
-  This cloud-saved data allows you to reinstall the game or switch to a
-  new device without losing your progress.
+  When you sign in, that player ID is linked to your anonymous game account
+  so your progress follows you across reinstalls and devices. We do not
+  receive your Google or Apple account password or email address. Signing
+  in is <strong>optional</strong>; the game works fully without it.
+</p>
+
+<h3>Cloud save</h3>
+<p>
+  Your cloud save contains your game progress: levels reached, stars and
+  scores per level, in-game collection progress (stickers, packs and
+  similar items), and your leaderboard nickname, if you set one. It is
+  stored in Google Firebase (Cloud Firestore) and can only be read by your
+  own game account.
 </p>
 <p>
-  Signing in with Google is <strong>optional</strong>. The game functions
-  fully without it using only local device storage.
+  <strong>Android only:</strong> earlier versions of the game stored
+  progress in the <strong>Google Drive App Data folder</strong>
+  (<code>drive.appdata</code> scope) through Google Play Games saved games.
+  If you sign in with Google, the game reads that saved game once to move
+  your progress to the new cloud save. It only accesses a private folder on
+  <em>your</em> Google Drive that is only accessible by this app. We cannot
+  see your other files, photos, or documents.
+</p>
+
+<h3>Leaderboards</h3>
+<p>
+  The game has public leaderboards (level reached, total stars, best
+  score). Your entry shows your <strong>leaderboard nickname</strong> and
+  score to all players. If you have not chosen a nickname, a generated name
+  such as &ldquo;Player1234&rdquo; is shown. Please do not use your real
+  name or other personal information as your nickname. Offensive nicknames
+  are filtered and may be removed.
+</p>
+
+<h2>In-App Purchases</h2>
+
+<p>
+  The game offers optional in-app purchases of virtual items. Payments are
+  processed by the <strong>Apple App Store</strong> (iOS) or <strong>Google
+  Play</strong> (Android) under their own terms and privacy policies. We
+  never receive your card number or other payment details. We receive
+  only transaction information (such as the product purchased and a
+  receipt) so that we can deliver the item to you.
+</p>
+
+<h2>Push Notifications</h2>
+
+<p>
+  The game can send push notifications (for example, reminders and event
+  announcements) using Firebase Cloud Messaging, which on iOS is delivered
+  through the Apple Push Notification service. The game asks for your
+  permission before sending notifications. You can turn them off at any
+  time in your device's notification settings.
 </p>
 
 <h2>Third-Party Services</h2>
@@ -84,8 +140,14 @@
 <p>The game uses the following third-party services:</p>
 <ul>
   <li>
-    <strong>Google Play Services</strong> &mdash; sign-in, leaderboards,
-    achievements, and cloud-saved games. (<a href="https://policies.google.com/privacy" target="_blank">Privacy policy</a>)
+    <strong>Google Play Services</strong> (Android) &mdash; Google Play Games
+    sign-in, achievements, legacy saved games, and in-app purchases.
+    (<a href="https://policies.google.com/privacy" target="_blank">Privacy policy</a>)
+  </li>
+  <li>
+    <strong>Apple Game Center and App Store</strong> (iOS) &mdash; Game Center
+    sign-in and in-app purchases.
+    (<a href="https://www.apple.com/legal/privacy/" target="_blank">Privacy policy</a>)
   </li>
   <li>
     <strong>Google AdMob</strong> &mdash; interstitial and rewarded video
@@ -93,14 +155,16 @@
     (<a href="https://support.google.com/admob/answer/6128543" target="_blank">Privacy policy</a>)
   </li>
   <li>
-    <strong>Firebase</strong> (Analytics, Cloud Messaging, Realtime
-    Database, Authentication) &mdash; usage analytics, push notifications,
-    and anonymous gameplay statistics.
+    <strong>Firebase</strong> (Analytics, Authentication, Cloud Firestore,
+    Realtime Database, Cloud Messaging) &mdash; usage analytics, the
+    anonymous game account, cloud save, leaderboards, anonymous gameplay
+    statistics, and push notifications.
     (<a href="https://firebase.google.com/support/privacy" target="_blank">Privacy policy</a>)
   </li>
   <li>
-    <strong>Unity</strong> &mdash; game engine and Unity services
-    telemetry. (<a href="https://unity.com/legal/privacy-policy" target="_blank">Privacy policy</a>)
+    <strong>Unity</strong> &mdash; game engine, Unity In-App Purchasing, and
+    Unity services telemetry.
+    (<a href="https://unity.com/legal/privacy-policy" target="_blank">Privacy policy</a>)
   </li>
 </ul>
 
@@ -110,7 +174,8 @@
   Ads in the game are served via Google AdMob with mediation. Mediation
   allows additional ad networks to bid on each ad request so the
   best-performing ad is shown. Each mediation partner may collect device
-  identifiers (such as Android Advertising ID), IP address, and limited
+  identifiers (the Android Advertising ID or, on iOS, the Identifier for
+  Advertisers (IDFA) if you allow tracking), IP address, and limited
   device characteristics to deliver and measure ads. The currently
   integrated mediation partners are:
 </p>
@@ -146,6 +211,18 @@
   settings.
 </p>
 
+<h3>App Tracking Transparency (iOS)</h3>
+<p>
+  On iOS 14.5 and later, the game uses Apple's App Tracking Transparency
+  prompt to ask whether you allow it to track you across apps and websites
+  owned by other companies. If you allow tracking, the IDFA may be used by
+  AdMob and the mediation partners listed above to show personalised ads
+  and measure ad performance. If you do not allow it, the IDFA is not
+  shared and you will still see ads, but they will be less relevant to you.
+  You can change this at any time in <strong>Settings &rarr; Privacy &amp;
+  Security &rarr; Tracking</strong>.
+</p>
+
 <h2>Log Data</h2>
 
 <p>
@@ -162,8 +239,11 @@
 <p>
   The mobile game itself does not use browser cookies. Third-party SDKs
   embedded in the game may use device identifiers (such as the Android
-  Advertising ID) for the purposes described above. You can reset your
-  Advertising ID at any time from your device settings.
+  Advertising ID, or the IDFA on iOS if you allow tracking) for the
+  purposes described above. On Android you can reset or delete your
+  Advertising ID in your device's Google settings. On iOS you can allow or
+  deny tracking for each app in Settings &rarr; Privacy &amp; Security
+  &rarr; Tracking.
 </p>
 
 <h2>Data Retention and Deletion</h2>
@@ -175,23 +255,36 @@
     from your device settings.
   </li>
   <li>
-    <strong>Cloud-saved data</strong> in the Google Drive App Data folder
-    is retained as long as the game is installed against your Google
-    account. To delete it, visit
+    <strong>Cloud save and leaderboard entries</strong> stored in Firebase
+    are kept while your game account exists. To have them deleted, email
+    <a href="mailto:support@bnbgamestudio.com">support@bnbgamestudio.com</a>
+    with your leaderboard nickname and platform (iOS or Android). We will
+    delete your game account, cloud save, and leaderboard entries within
+    30 days.
+  </li>
+  <li>
+    <strong>Android &mdash; Google Drive App Data folder:</strong> to delete
+    legacy saved-game data, visit
     <a href="https://myaccount.google.com/permissions" target="_blank">https://myaccount.google.com/permissions</a>,
     find &ldquo;Sweet Jelly Match 3 Puzzle&rdquo;, and choose
     &ldquo;Remove access&rdquo;. This revokes our access and deletes the
     data stored in the App Data folder.
   </li>
   <li>
-    <strong>Leaderboard and achievement data</strong> stored on Google's
-    servers can be removed through Google Play Games. Open the Play
-    Games app, go to Settings &rarr; Delete Play Games account &amp; data,
-    and follow the instructions.
+    <strong>Android &mdash; Google Play Games achievements</strong> are
+    stored on Google's servers and can be removed through Google Play Games.
+    Open the Play Games app, go to Settings &rarr; Delete Play Games account
+    &amp; data, and follow the instructions.
+  </li>
+  <li>
+    <strong>iOS &mdash; Game Center:</strong> your Game Center account is
+    managed by Apple. You can sign out of Game Center in Settings &rarr;
+    Game Center, and manage your Apple account data at
+    <a href="https://privacy.apple.com/" target="_blank">https://privacy.apple.com/</a>.
   </li>
   <li>
     <strong>Analytics and ad measurement data</strong> handled by Google,
-    Firebase, and the mediation partners is retained per their own
+    Firebase, Unity, and the mediation partners is retained per their own
     privacy policies linked above.
   </li>
   <li>
