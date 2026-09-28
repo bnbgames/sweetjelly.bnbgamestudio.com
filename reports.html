@@ -2,203 +2,233 @@
 <html lang="en">
 
 <head>
-    <link rel="icon" href="images/Icon.png">
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <style>
-        .loader {
-            display: none;
-            border: 16px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 16px solid #3498db;
-            width: 60px;
-            height: 60px;
-            -webkit-animation: spin 2s linear infinite;
-            /* Safari */
-            animation: spin 2s linear infinite;
-        }
-
-        /* Safari */
-        @-webkit-keyframes spin {
-            0% {
-                -webkit-transform: rotate(0deg);
-            }
-
-            100% {
-                -webkit-transform: rotate(360deg);
-            }
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-    </style>
-    <title>Document</title>
+    <meta name="robots" content="noindex, nofollow">
+    <title>Sweet Jelly Admin</title>
+    <link rel="icon" href="images/Icon.png">
+    <link rel="stylesheet" href="admin/admin.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
 
+    <!-- Firebase web config (stored in this browser only) -->
+    <section id="setup" class="center hidden">
+        <div class="panel">
+            <div class="brand"><img src="images/Icon.png" alt=""><div><b>Sweet Jelly Admin</b><span>Connect to Firebase</span></div></div>
+            <p class="muted small">
+                Paste the web app config from Firebase console &rarr; Project settings &rarr; Your apps &rarr; Web app
+                (project <code>sweetjellymatch3puzzle</code>). The whole <code>firebaseConfig = {...}</code> snippet is fine.
+                It is saved in this browser only.
+            </p>
+            <textarea id="configInput" spellcheck="false" placeholder='{ "apiKey": "...", "authDomain": "...", "databaseURL": "...", "projectId": "...", "appId": "..." }'></textarea>
+            <div id="setupError" class="error"></div>
+            <button id="saveConfig" class="btn primary">Save and continue</button>
+        </div>
+    </section>
 
-    <h1>Level Logs</h1>
+    <!-- Sign in -->
+    <section id="signin" class="center hidden">
+        <div class="panel">
+            <div class="brand"><img src="images/Icon.png" alt=""><div><b>Sweet Jelly Admin</b><span>Studio dashboard</span></div></div>
+            <p class="muted">Sign in with the studio Google account to load player data.</p>
+            <div id="signinError" class="error"></div>
+            <button id="googleSignIn" class="btn primary">Sign in with Google</button>
+            <button id="resetConfig" class="btn ghost small">Change Firebase config</button>
+        </div>
+    </section>
 
-    <button id="readOld">Read Old</button>
-    <button id="readv57">Read v57</button>
-    <button id="resetdb">Reset DB</button>
+    <!-- Dashboard -->
+    <div id="app" class="app hidden">
+        <aside class="sidebar">
+            <div class="brand"><img src="images/Icon.png" alt=""><div><b>Sweet Jelly</b><span>Admin</span></div></div>
+            <nav class="nav" id="nav">
+                <button data-view="overview" class="active">Overview</button>
+                <button data-view="levels">Levels</button>
+                <button data-view="collection">Collection</button>
+                <button data-view="players">Players</button>
+                <button data-view="leaderboards">Leaderboards</button>
+            </nav>
+            <div class="foot">
+                <div class="who" id="who"></div>
+                <button id="signOut" class="btn ghost small">Sign out</button>
+            </div>
+        </aside>
 
-    <br /><br /><br />
-    <div id="loader" class="loader"></div>
+        <main>
+            <div class="topbar">
+                <h1 id="viewTitle">Overview</h1>
+                <span class="sync" id="syncStatus"></span>
+                <button id="refresh" class="btn">Refresh</button>
+                <button id="fullResync" class="btn ghost" title="Discard the cached saves and download everything again">Full resync</button>
+            </div>
+            <div id="globalBanner" class="banner hidden"></div>
 
-    <div id="grid"></div>
+            <!-- Overview -->
+            <section class="view active" data-view="overview">
+                <div class="grid kpis" id="overviewKpis"></div>
+                <div class="grid cols-2">
+                    <div class="card">
+                        <div class="card-head"><h3>Where players are</h3><span class="hint">highest level beaten, all players</span></div>
+                        <div class="chart"><canvas id="chLevelDist"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Last activity</h3><span class="hint">players by day of their last cloud save, last 30 days</span></div>
+                        <div class="chart"><canvas id="chActivity"></canvas></div>
+                    </div>
+                </div>
+                <div class="grid cols-2">
+                    <div class="card">
+                        <div class="card-head"><h3>What stands out</h3></div>
+                        <ul class="insights" id="insights"></ul>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Top players</h3><span class="hint">by level reached</span></div>
+                        <div class="table-wrap" id="topPlayers"></div>
+                    </div>
+                </div>
+            </section>
 
+            <!-- Levels -->
+            <section class="view" data-view="levels">
+                <div class="card">
+                    <div class="toolbar">
+                        <label>Stats path
+                            <select id="statsPath">
+                                <option value="v57">v57 (current)</option>
+                                <option value="">Legacy (root)</option>
+                            </select>
+                        </label>
+                        <label>Levels <input type="number" id="lvFrom" min="1" value="1"> to <input type="number" id="lvTo" min="1" value="200"></label>
+                        <label>Min plays for rankings <input type="number" id="minPlays" min="1" value="30"></label>
+                        <button class="btn" id="lvApply">Apply</button>
+                    </div>
+                    <div class="grid kpis" id="levelKpis"></div>
+                </div>
+                <div class="card">
+                    <div class="card-head"><h3>Win rate and players stopped, by level</h3><span class="hint">win rate = wins &divide; (wins + fails)</span></div>
+                    <div class="chart tall"><canvas id="chLevels"></canvas></div>
+                    <p class="note">
+                        Players stopped = cloud saves whose next unbeaten level is this one. Inactive = no cloud save for 7+ days,
+                        i.e. they likely quit here. Wins count every win, including replays. Fails count only when the player
+                        gives up (declines to continue).
+                    </p>
+                </div>
+                <div class="grid cols-2">
+                    <div class="card">
+                        <div class="card-head"><h3>Hardest levels</h3><span class="hint">lowest win rate in range</span></div>
+                        <div class="table-wrap" id="hardest"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Biggest drop-off</h3><span class="hint">most inactive players stopped here</span></div>
+                        <div class="table-wrap" id="dropoff"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-head"><h3>All levels in range</h3><span class="hint">click a header to sort</span></div>
+                    <div class="table-wrap" id="levelTable"></div>
+                    <p class="note">
+                        Fail attempt columns: the game counts the Nth fail since the game scene was last loaded
+                        (4 = 4th or later), so they show how often players keep failing in a row, not strict per-level retries.
+                    </p>
+                </div>
+            </section>
 
-    <link href="https://kendo.cdn.telerik.com/2022.2.510/styles/kendo.common.min.css" rel="stylesheet" />
-    <link href="https://kendo.cdn.telerik.com/2022.2.510/styles/kendo.default.min.css" rel="stylesheet" />
-    <script src="https://kendo.cdn.telerik.com/2022.2.510/js/jquery.min.js"></script>
-    <script src="https://kendo.cdn.telerik.com/2022.2.510/js/kendo.all.min.js"></script>
+            <!-- Collection -->
+            <section class="view" data-view="collection">
+                <div class="banner" id="seasonBanner"></div>
+                <div class="grid kpis" id="collectionKpis"></div>
+                <div class="grid cols-2">
+                    <div class="card">
+                        <div class="card-head"><h3>Collection funnel</h3><span class="hint">share of all players</span></div>
+                        <div class="chart"><canvas id="chFunnel"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Stickers owned per collector</h3><span class="hint">out of 48</span></div>
+                        <div class="chart"><canvas id="chOwnedDist"></canvas></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-head"><h3>Sticker ownership</h3><span class="hint">% of collectors who own each sticker</span></div>
+                    <div id="heatmap"></div>
+                    <div class="legend">
+                        <span class="r0">&#9679; Common</span><span class="r1">&#9679; Rare</span><span class="r2">&#9679; Epic</span><span class="r3">&#9679; Legendary</span>
+                        <span>Cell colour intensity = ownership %</span>
+                    </div>
+                </div>
+                <div class="grid cols-2">
+                    <div class="card">
+                        <div class="card-head"><h3>Sets</h3><span class="hint">among collectors</span></div>
+                        <div class="table-wrap" id="setTable"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Ownership by rarity vs. pack odds</h3></div>
+                        <div class="table-wrap" id="rarityTable"></div>
+                        <p class="note">
+                            Pack odds are the Standard Pack weights. If a rarity is owned far less than its odds suggest,
+                            players are not opening enough packs to reach it (or the odds are too tight).
+                        </p>
+                    </div>
+                </div>
+                <div class="grid cols-2">
+                    <div class="card">
+                        <div class="card-head"><h3>New stickers per day</h3><span class="hint">first-time acquisitions, last 30 days</span></div>
+                        <div class="chart"><canvas id="chAcq"></canvas></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Stardust balances</h3><span class="hint">collectors</span></div>
+                        <div class="chart"><canvas id="chStardust"></canvas></div>
+                        <p class="note" id="stardustNote"></p>
+                    </div>
+                </div>
+                <div class="grid cols-3">
+                    <div class="card">
+                        <div class="card-head"><h3>Unopened packs</h3></div>
+                        <div class="table-wrap" id="packTable"></div>
+                        <p class="note" id="pityNote"></p>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Shop activity today</h3><span class="hint">UTC day</span></div>
+                        <div class="table-wrap" id="shopTable"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-head"><h3>Equipped cosmetics</h3></div>
+                        <div class="table-wrap" id="cosmeticTable"></div>
+                    </div>
+                </div>
+            </section>
 
-    <script type="module">
-        $("#loader").show();
-        $(":button").attr("disabled", true);
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.8.3/firebase-app.js'
-        import { getDatabase, ref, child, get, set } from "https://www.gstatic.com/firebasejs/9.8.3/firebase-database.js"
-        import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/9.8.3/firebase-auth.js'
+            <!-- Players -->
+            <section class="view" data-view="players">
+                <div class="card">
+                    <div class="toolbar">
+                        <input type="search" id="playerSearch" placeholder="Search nickname or UID" style="min-width:240px">
+                        <label>Active
+                            <select id="playerActive">
+                                <option value="0">Any time</option>
+                                <option value="1">Last 24h</option>
+                                <option value="7">Last 7 days</option>
+                                <option value="30">Last 30 days</option>
+                            </select>
+                        </label>
+                        <label><input type="checkbox" id="playerCollectorsOnly"> Collectors only</label>
+                        <span class="muted small" id="playerCount"></span>
+                    </div>
+                    <div class="table-wrap" id="playerTable"></div>
+                </div>
+            </section>
 
-        // read config
-        var config = JSON.parse(localStorage.getItem('config'));
-        if (config != null) {
-            const app = initializeApp(config);
+            <!-- Leaderboards -->
+            <section class="view" data-view="leaderboards">
+                <div class="grid cols-3" id="boards"></div>
+            </section>
+        </main>
+    </div>
 
-            const auth = getAuth();
-            var dbRef;
-            signInAnonymously(auth)
-                .then(() => {
-                    $("#loader").hide();
-                    $(":button").removeAttr("disabled");
-                    // Initialize Firebase
-                    dbRef = ref(getDatabase());
-                })
-                .catch((error) => {
-                    const errorCode = error.code;
-                    const errorMessage = error.message;
-                    console.log(error);
-                    // ...
-                });
-        }
+    <div id="drawer" class="hidden"></div>
 
-        var data = null;
-
-        $("#resetdb").click(() => {
-            let confirmAction = confirm("Are you sure you want to reset levels log db?");
-            if (confirmAction == false) return;
-
-            var cleanLevelsObject = {};
-            for (var i = 1; i < 2001; i++) {
-                cleanLevelsObject[`Level${i}`] =
-                {
-                    Wins: 0,
-                    Fails: 0,
-                    FailsAttempt1: 0,
-                    FailsAttempt2: 0,
-                    FailsAttempt3: 0,
-                    FailsAttempt4: 0
-                }
-            }
-
-            //update db
-            set(ref(getDatabase(), `Levels`), cleanLevelsObject);
-        });
-
-
-        $("#readOld").click(() => {
-            ReadLogs("");
-        });
-
-        $("#readv57").click(() => {
-            ReadLogs("v57");
-        });
-
-        function ReadLogs(ver) {
-            $("#loader").show();
-            $(":button").attr("disabled", true);
-            get(child(dbRef, `${ver}/Levels`)).then((snapshot) => {
-                $("#loader").hide();
-                $(":button").removeAttr("disabled");
-                if (snapshot.exists()) {
-                    data = snapshot.val();
-                    let dataArr = Object.keys(data).map((k) => { data[k].levelNumber = parseInt(k.substring(5)); return data[k]; });
-
-                    $("#grid").kendoGrid({
-                        sortable: true,
-                        filterable: {
-                            mode: "row"
-                        },
-                        pageable: {
-                            pageSize: 20
-                        },
-                        columns: [
-                            {
-                                field: "levelNumber",
-                                title: "Level Number"
-                            },
-                            {
-                                field: "Wins",
-                                title: "Wins"
-                            },
-                            {
-                                field: "Fails",
-                                title: "Fails"
-                            },
-                            {
-                                field: "FailsAttempt1",
-                                title: "FailsAttempt1"
-                            },
-                            {
-                                field: "FailsAttempt2",
-                                title: "FailsAttempt2"
-                            },
-                            {
-                                field: "FailsAttempt3",
-                                title: "FailsAttempt3"
-                            },
-                            {
-                                field: "FailsAttempt4",
-                                title: "FailsAttempt4"
-                            },
-                        ],
-                        dataSource: {
-                            data: dataArr,
-                            sort: { field: "levelNumber", dir: "asc" },
-                            schema: {
-                                model: {
-                                    fields: {
-                                        levelNumber: { type: "number" },
-                                        Wins: { type: "number" },
-                                        Fails: { type: "number" },
-                                        FailsAttempt1: { type: "number" },
-                                        FailsAttempt2: { type: "number" },
-                                        FailsAttempt3: { type: "number" },
-                                        FailsAttempt4: { type: "number" }
-
-                                    }
-                                }
-                            },
-                        }
-                    });
-                }
-            }).catch((error) => {
-                console.error(error);
-            });
-        }
-    </script>
-
+    <script type="module" src="admin/app.js"></script>
 </body>
 
 </html>
