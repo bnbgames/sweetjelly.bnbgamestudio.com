@@ -547,9 +547,11 @@ function renderInsights(lv, cm) {
     out.push(['', `Easiest set: ${easySet.name} (${pct(easySet.completeRate, 1)} complete). Hardest: ${hardSet.name} (${pct(hardSet.completeRate, 1)}).`]);
     const canBuy = cm.collectors.filter(p => p.col.stardust >= STARDUST.directBuyCost[0] && !p.col.albumComplete).length;
     if (canBuy) out.push(['', `${fmt(canBuy)} collectors have enough stardust (${STARDUST.directBuyCost[0]}+) to buy a missing Common sticker.`]);
-    const queued = sum(cm.collectors.map(p => p.col.unopenedPacks.length));
-    if (queued) out.push(['', `${fmt(queued)} packs are sitting unopened across ${fmt(cm.collectors.filter(p => p.col.unopenedPacks.length).length)} players.`]);
   }
+  const queued = sum(cm.withCol.map(p => p.col.unopenedPacks.length));
+  const neverOpened = cm.withCol.filter(p => p.col.ownedCount === 0 && p.col.unopenedPacks.length).length;
+  if (queued) out.push([neverOpened ? 'bad' : '', `${fmt(queued)} packs are sitting unopened across ${fmt(cm.withCol.filter(p => p.col.unopenedPacks.length).length)} players`
+    + (neverOpened ? `; ${fmt(neverOpened)} of them have never opened a single pack.` : '.')]);
   $('#insights').innerHTML = out.length ? out.map(([cls, t]) => `<li class="${cls}">${esc(t)}</li>`).join('') : '<li>No data yet.</li>';
 }
 
@@ -692,19 +694,21 @@ function collectionDetails(cm, acqDays = 30) {
     .map(([lo, hi, band]) => ({ band, collectors: sd.filter(v => v >= lo && v <= hi).length }));
   const stardustWiped = collectors.filter(p => p.col.stardustWiped).length;
 
+  // Packs, pity and shop use every collection save: players with packs but no
+  // stickers yet are exactly the ones who never opened the album.
   const packCounts = {}, packHolders = {};
-  for (const p of collectors) {
+  for (const p of withCol) {
     const seen = new Set();
     for (const id of p.col.unopenedPacks) { packCounts[id] = (packCounts[id] || 0) + 1; seen.add(id); }
     seen.forEach(id => { packHolders[id] = (packHolders[id] || 0) + 1; });
   }
   const packs = Object.keys({ ...PACKS, ...packCounts }).map(id => ({ id, name: PACKS[id]?.name || id, queued: packCounts[id] || 0, holders: packHolders[id] || 0 }));
-  const nearPity = collectors.filter(p => p.col.pity >= PACKS.standard.pity - 5).length;
+  const nearPity = withCol.filter(p => p.col.pity >= PACKS.standard.pity - 5).length;
 
   const today = utcDayStamp();
   const shopToday = {};
   let buyersToday = 0, everBought = 0, adToday = 0, adEver = 0;
-  for (const p of collectors) {
+  for (const p of withCol) {
     if (p.col.coinPacksDayStamp) everBought++;
     if (p.col.coinPacksDayStamp === today) {
       buyersToday++;
